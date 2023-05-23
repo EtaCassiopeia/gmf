@@ -30,7 +30,7 @@ pub trait Server<Service> {
     fn serve(&self, service: Service) -> Self::Result;
 }
 
-/// GlommioServer is a server that listens for connections on a specified address,
+/// GlommioServer listens for connections on a specified address,
 /// and serves them using a provided service.
 #[derive(Debug)]
 pub struct GlommioServer {
@@ -48,25 +48,8 @@ impl GlommioServer {
         Self {
             max_connections,
             task_q,
-            addr: addr,
+            addr,
         }
-    }
-}
-
-//TODO Introduce a better error type.
-pub struct ConnResult(SocketAddr, Result<(), hyper::Error>);
-
-impl From<ConnResult> for io::Result<()> {
-    fn from(value: ConnResult) -> Self {
-        match value.1 {
-            Err(err) if !err.is_incomplete_message() => {
-                error!("Stream from {:?} failed with error {:?}", value.0, err);
-                Err(())
-            }
-            Err(_) => Err(()),
-            _ => Ok(()),
-        }
-        .map_err(|_| io::Error::from(ConnectionReset))
     }
 }
 
@@ -92,16 +75,9 @@ where
         debug!("Binding to address {:?}.", self.addr);
         let listener = TcpListener::bind(self.addr)?;
 
-        //TODO: This semaphore is used to limit the number of concurrent connections.
-        // It should be replaced by an implementation of the Service::poll_ready method.
         let conn_control = Rc::new(Semaphore::new(max_connections as _));
 
         let spawn_result = GlommioExecutor { task_q }.spawn(async move {
-            if max_connections == 0 {
-                error!("Max connections is 0, no connections will be accepted.");
-                return Err::<(), GlommioError<()>>(io::Error::from(ConnectionRefused).into());
-            }
-
             debug!("Listening for connections.");
 
             loop {
@@ -114,18 +90,33 @@ where
                 let captured_service = service.clone();
 
                 GlommioExecutor { task_q }.execute(async move {
-                    let _semaphore_permit = scoped_conn_control.acquire_permit(1).await?;
+                    // Acquire a permit from the connection semaphore. It will reject the connection if the max number of connections is reached.
+                    // To avoid leaking permits, we use a scoped permit which will release the permit when it goes out of scope.
+                    // scoped_conn_control.acquire_permit(1).await?; can be used instead of scoped_conn_control.try_acquire_permit(1) if we want to block the task until a permit is available.
+                     match scoped_conn_control.try_acquire_permit(1) {
+                         Ok(_) => {
+                             debug!("Acquired connection semaphore, number of available connection permits : {}.",  scoped_conn_control.available());
+                             let http = Http::new()
+                                 .with_executor(GlommioExecutor { task_q })
+                                 .serve_connection(TokioIO(stream), captured_service);
 
-                    let http = Http::new()
-                        .with_executor(GlommioExecutor { task_q })
-                        .serve_connection(TokioIO(stream), captured_service);
-
-                    debug!("Serving connection from {:?}.", addr);
-
-                    let conn_res: io::Result<()> = ConnResult(addr, http.await).into();
-
-                    debug!("Connection from {:?} closed.", addr);
-                    conn_res
+                              http.await.map_err(|e| {
+                                 error!("Stream failed with error {:?}", e);
+                                 io::Error::from(ConnectionReset).into()
+                             })
+                         },
+                         Err(GlommioError::Closed(_)) => {
+                             error!("Failed to acquire connection semaphore.");
+                             Err::<(), GlommioError<()>>(io::Error::from(ConnectionRefused).into())
+                         },
+                         Err(_) => {
+                             error!(
+                                 "Max connections reached, refusing connection from {:?}.",
+                                 addr
+                             );
+                             Err::<(), GlommioError<()>>(io::Error::from(ConnectionRefused).into())
+                         }
+                     }
                 });
             }
         });

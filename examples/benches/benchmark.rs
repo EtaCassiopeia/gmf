@@ -20,7 +20,7 @@ pub async fn run_client(host: &'static str) -> Result<(), Box<dyn std::error::Er
     });
 
     // Send the request
-    let response = client.say_hello(request).await?;
+    let _response = client.say_hello(request).await?;
 
     //println!("RESPONSE={:?}", response);
 

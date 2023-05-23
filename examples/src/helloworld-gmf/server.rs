@@ -3,6 +3,9 @@
 //! actual implementation of the service, and the `main` function is responsible
 //! for creating an instance of `GmfServer` and serving the `MyGreeter` service on it.
 
+use std::sync::Arc;
+
+use log::{error, info};
 use tonic::{Request, Response, Status};
 use tower::Service;
 
@@ -32,7 +35,7 @@ impl Greeter for MyGreeter {
     }
 }
 
-#[cfg(target_os = "linux")]
+// #[cfg(target_os = "linux")]
 fn main() {
     env_logger::init();
     use std::net::SocketAddr;
@@ -43,10 +46,23 @@ fn main() {
 
     let tonic: GreeterServer<MyGreeter> = GreeterServer::new(greeter);
     use hyper::service::service_fn;
-    let gmf = GmfServer::new(service_fn(move |req| {
-        let mut tonic = tonic.clone();
-        tonic.call(req)
-    }));
+    let gmf = GmfServer::new(
+        service_fn(move |req| {
+            let mut tonic = tonic.clone();
+            tonic.call(req)
+        }),
+        1024,
+    );
+
+    let sender = Arc::clone(&gmf.signal_tx);
+
+    ctrlc_async::set_async_handler(async move {
+        info!("Received Ctrl-C, shutting down");
+        sender.try_send(()).unwrap_or_else(|_| {
+            error!("Failed to send termination signal.");
+        });
+    })
+    .expect("Error setting Ctrl-C handler");
 
     // Run the gRPC server on the provided address
     gmf.serve(addr).unwrap_or_else(|e| panic!("failed {}", e));

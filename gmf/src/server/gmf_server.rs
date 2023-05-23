@@ -4,11 +4,14 @@
 //! using the provided hyper service.
 
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 use glommio::{executor, GlommioError, Latency, LocalExecutorBuilder, Placement, Shares, Task};
 use hyper::body::HttpBody;
 use hyper::http;
 use log::info;
+use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::Mutex;
 use tower_service::Service;
 
 use crate::server::glommio_server::GlommioServer;
@@ -20,6 +23,11 @@ const THREAD_NAME: &str = "gmf_server";
 pub struct GmfServer<S, RespBd, Error> {
     /// The service that handles incoming GRPC requests.
     service: S,
+    max_connections: usize,
+    /// A channel used to send a termination signal to the server.
+    pub signal_tx: Arc<Sender<()>>,
+    /// A channel used to receive a termination signal from the server.
+    signal_rx: Arc<Mutex<Receiver<()>>>,
     _phantom: std::marker::PhantomData<(RespBd, Error)>,
 }
 
@@ -37,10 +45,22 @@ where
     RespBd::Error: std::error::Error + Send + Sync,
 {
     /// Creates a new instance of `GmfServer`.
-    pub fn new(service: S) -> Self {
+    pub fn new(service: S, max_connections: usize) -> Self {
+        let (sender, receiver) = tokio::sync::mpsc::channel::<()>(1);
         Self {
             service,
+            max_connections,
+            signal_tx: Arc::new(sender),
+            signal_rx: Arc::new(Mutex::new(receiver)),
             _phantom: std::marker::PhantomData,
+        }
+    }
+
+    /// Terminates the server.
+    pub async fn terminate(&self) {
+        let sender = Arc::clone(&self.signal_tx);
+        if let Err(_) = sender.try_send(()) {
+            println!("Failed to send termination signal.");
         }
     }
 
@@ -48,19 +68,9 @@ where
     /// Listens for incoming connections on the provided `SocketAddr`.
     /// Graceful shutdown is handled by listening for a CTRL-C signal.
     pub fn serve(&self, addr: SocketAddr) -> glommio::Result<(), ()> {
-        let (signal_tx, mut signal_rx) = tokio::sync::mpsc::channel::<()>(1);
-
-        //TODO: It shouldn't be the responsibility of the server to handle Ctrl-C.
-        ctrlc_async::set_async_handler(async move {
-            info!("Received Ctrl-C, shutting down");
-            signal_tx
-                .send(())
-                .await
-                .expect("Error sending signal to server");
-        })
-        .expect("Error setting Ctrl-C handler");
-
         let service = self.service.clone();
+        let max_connections = self.max_connections.clone();
+        let signal_rx_clone = Arc::clone(&self.signal_rx);
 
         LocalExecutorBuilder::new(Placement::Unbound)
             .name(THREAD_NAME)
@@ -71,7 +81,8 @@ where
                     "rpc_server_tq",
                 );
 
-                let server: GlommioServer = GlommioServer::new(1024, rpc_server_tq, addr);
+                let server: GlommioServer =
+                    GlommioServer::new(max_connections, rpc_server_tq, addr);
 
                 let server_task: Task<Result<(), GlommioError<()>>> =
                     server.serve(service).expect("GMF server failed!");
@@ -80,6 +91,7 @@ where
 
                 info!("Listening for GRPC requests on {}", addr);
 
+                let mut signal_rx = signal_rx_clone.lock().await;
                 signal_rx.recv().await;
 
                 server_join_handle.cancel();

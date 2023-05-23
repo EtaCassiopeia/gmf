@@ -27,10 +27,7 @@ impl GlommioExecutor {
         F::Output: 'static,
     {
         glommio::spawn_local_into(f, self.task_q).map_err(|spawn_error| {
-            error!(
-                "spawn_local_into -> {:?} ==> {:?}",
-                self.task_q, spawn_error
-            );
+            error!("Error spawning future: {:?}", spawn_error);
         })
     }
 }

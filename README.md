@@ -27,6 +27,30 @@ When it comes to handling gRPC services, these techniques allow the efficient pr
 **IMPORTANT:** This project is designed to work on Linux systems only.
 Please ensure you're running a compatible Linux distribution before installing or using this package.
 
+## Running Your Service with GMF
+
+After defining your service (like `MyGreeter`), you can serve it using `GmfServer` in just a few lines of code:
+
+```rust
+let greeter: MyGreeter = MyGreeter::default();
+let tonic: GreeterServer<MyGreeter> = GreeterServer::new(greeter);
+
+use hyper::service::service_fn;
+let gmf = GmfServer::new(
+    service_fn(move |req| {
+        let mut tonic = tonic.clone();
+        tonic.call(req)
+    }),
+    1024,  // max_connections
+);
+
+gmf.serve(addr).unwrap_or_else(|e| panic!("failed {}", e));
+```
+
+The `GmfServer::new()` function takes two parameters: the service function that handles the requests and the maximum number of concurrent connections.
+
+For a full working example, please refer to the [example source code](examples/src/helloworld-gmf/server.rs)
+
 ## Setting up Development Environment Using Nix
 
 If the required tools are not installed on your machine, Nix provides an easy and consistent way to set up your development environment. This setup process assumes that you have Nix installed on your machine. If not, you can install it from the [official Nix website](https://nixos.org/download.html).
