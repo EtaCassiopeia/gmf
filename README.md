@@ -10,6 +10,17 @@ GMF enables you to manage your RPCs in an efficient, lightweight, and powerful m
 
 Please note that GMF-RPC is designed specifically for Linux, leveraging several Linux-specific features to provide its capabilities.
 
+## Harnessing Glommio and Seastar for High-Performance Networking
+
+Glommio and Seastar are designed to provide high-performance networking capabilities by optimizing how network operations are handled. Both use techniques that revolve around the shared-nothing design, single-threaded execution, and bypassing the traditional network layers. Let's dive a bit into these techniques:
+
+1. **Shared-nothing Design**: Both Glommio and Seastar are designed around a shared-nothing architecture, which means each CPU core operates independently of others. This architecture minimizes the contention and overhead that can occur with thread synchronization, leading to greater performance and efficiency. Each core has its private memory, and there's no need for locks to access shared data. This approach is particularly beneficial for handling high concurrency levels and achieving high-throughput network services.
+
+2. **Single-threaded Execution**: Each core runs a single thread and handles all the tasks scheduled to it in an asynchronous, non-blocking manner. This model further reduces the overhead associated with context switching between threads and enables efficient execution of numerous concurrent tasks.
+
+3. **Bypassing Traditional Network Layers**: Instead of going through the kernel's network stack, Seastar and Glommio can make use of the Data Plane Development Kit (DPDK) or kernel bypass networking, which allows direct access to the network hardware from user space. This technique bypasses the kernel, leading to lower latency and higher throughput for network operations.
+
+When it comes to handling gRPC services, these techniques allow the efficient processing of numerous RPC calls. With the asynchronous, event-driven model, incoming requests can be processed as they arrive, without blocking threads or needing to context switch. The result is a gRPC service that is not only high-performing but also resource-efficient, enabling better scaling for microservices architectures.
 
 ## System Requirements
 
