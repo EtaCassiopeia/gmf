@@ -8,11 +8,11 @@ Our library elegantly blends Glommio's modern cooperative threading model with T
 
 GMF enables you to manage your RPCs in an efficient, lightweight, and powerful manner, while staying fully async from end to end. By implementing an executor based on Glommio's cooperative threading model, the library offers low-latency, high-throughput operation, and excellent resource utilization.
 
-Please note that GMF-RPC is designed specifically for Linux, leveraging several Linux-specific features to provide its capabilities.
+Please note that GMF is designed specifically for Linux, leveraging several Linux-specific features to provide its capabilities.
 
 ## Harnessing Glommio and Seastar for High-Performance Networking
 
-Glommio and Seastar are designed to provide high-performance networking capabilities by optimizing how network operations are handled. Both use techniques that revolve around the shared-nothing design, single-threaded execution, and bypassing the traditional network layers. Let's dive a bit into these techniques:
+[Glommio](https://github.com/DataDog/glommio) and [Seastar](http://seastar.io/) are designed to provide high-performance networking capabilities by optimizing how network operations are handled. Both use techniques that revolve around the shared-nothing design, single-threaded execution, and bypassing the traditional network layers. Let's dive a bit into these techniques:
 
 1. **Shared-nothing Design**: Both Glommio and Seastar are designed around a shared-nothing architecture, which means each CPU core operates independently of others. This architecture minimizes the contention and overhead that can occur with thread synchronization, leading to greater performance and efficiency. Each core has its private memory, and there's no need for locks to access shared data. This approach is particularly beneficial for handling high concurrency levels and achieving high-throughput network services.
 
