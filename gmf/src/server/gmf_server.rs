@@ -50,6 +50,7 @@ where
     pub fn serve(&self, addr: SocketAddr) -> glommio::Result<(), ()> {
         let (signal_tx, mut signal_rx) = tokio::sync::mpsc::channel::<()>(1);
 
+        //TODO: It shouldn't be the responsibility of the server to handle Ctrl-C.
         ctrlc_async::set_async_handler(async move {
             info!("Received Ctrl-C, shutting down");
             signal_tx

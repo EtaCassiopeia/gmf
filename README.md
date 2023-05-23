@@ -129,7 +129,7 @@ After building the Docker image, you can use it to compile and run your Rust pro
 To run the examples inside the Docker container, you can use the `cargo-docker.sh` script followed by `run --package examples --bin <example_name> --features <feature-name>`. Replace `example_name` and `feature-name` with the name of the example and the required feature you want to run:
 
 ```bash
-./cargo-docker.sh run --package examples --bin helloworld-server --features hyper-warp
+./cargo-docker.sh run --package examples --bin helloworld-gmf-server --features hyper-warp
 ```
 
 ### Testing
@@ -202,3 +202,64 @@ Please note that the exact steps might vary slightly depending on the version of
 If you want to use a remote development environment but you're using the "Community" edition of IntelliJ IDEA, one workaround is to use Visual Studio Code with the "Remote - SSH" or "Remote - Containers" extensions, which provide similar capabilities and are free to use.
 
 Lastly, remember that while you can run your application in a remote environment, the source code itself will still need to be available locally if you want to use IntelliJ IDEA's code navigation and other features. If you're currently storing your code only in the Docker container, you might need to change your setup to store the code on your local machine and mount it as a volume in the Docker container.
+
+## Benchmarking
+
+### Using `ghz` to Benchmark the gRPC Service
+
+You can use benchmarking tools like `ghz`, a high-performance gRPC benchmarking tool written in Go.
+
+Firstly, you need to install `ghz`. If you have Go installed, you can use:
+
+```bash
+brew install ghz
+```
+
+Or you can download pre-compiled binaries from the `ghz` [releases page](https://github.com/bojand/ghz/releases).
+
+Once you have `ghz` installed, you can run the benchmark with the following command:
+
+```bash
+ghz --insecure --proto examples/proto/helloworld/helloworld.proto --call helloworld.Greeter.SayHello -d '{"name":"Test"}' -c 200 -n 2000 0.0.0.0:50051
+```
+
+In this command:
+
+- `--insecure`: Disable TLS.
+- `--proto /path/to/helloworld.proto`: The path to the service's protocol buffer definition.
+- `--call helloworld.Greeter.SayHello`: The fully-qualified name of the service method to call.
+- `-d '{"name":"Test"}'`: The data to send with your request.
+- `-c 200`: The number of concurrent requests to make.
+- `-n 2000`: The total number of requests to make.
+- `0.0.0.0:50051`: The address and port of the service to benchmark.
+
+You will need to adjust the `--proto`, `--call`, `--d`, `--c`, `--n`, and server address arguments as needed for your service.
+
+Please note, if the server you are testing uses TLS, you need to provide the certificate file to the `ghz` tool using the `--cacert` flag. You would also need to remove the `--insecure` flag.
+
+# Performance Comparison: Tonic vs GMF
+
+We've compared the performance of the Tonic-based GRPC server and client implementation with our enhanced Glommio Messaging Framework (GMF) based implementation. Here is a summary of the results:
+
+| Metric       | Tonic-based Implementation | GMF-based Implementation |
+|--------------|----------------------------|--------------------------|
+| Requests/sec | 6512.01                    | 8990.59                  |
+| Fastest      | 7.71 ms                    | 1.58 ms                  |
+| Slowest      | 62.15 ms                   | 60.11 ms                 |
+| Average      | 28.00 ms                   | 19.43 ms                 |
+
+*Requests/sec*: Higher is better. This metric represents the number of requests that the server can handle per second.
+
+We found that GMF-based implementation handled approximately 38.02% more requests per second compared to the Tonic-based implementation.
+
+### Using Criterion.rs to Benchmark the GMF-based Implementation
+
+We use the Criterion.rs library for benchmarking. Here's how you can run the benchmarks for this project:
+
+   ```bash
+   ./cargo-docker.sh bench -p examples -- --verbose
+   ```
+
+This will run all benchmarks in the project.
+
+The output of the benchmark will be saved to the `target/criterion` directory. You can view a detailed report by opening `target/criterion/report/index.html` in your web browser.

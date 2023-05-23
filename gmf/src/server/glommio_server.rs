@@ -53,6 +53,7 @@ impl GlommioServer {
     }
 }
 
+//TODO Introduce a better error type.
 pub struct ConnResult(SocketAddr, Result<(), hyper::Error>);
 
 impl From<ConnResult> for io::Result<()> {
@@ -91,6 +92,8 @@ where
         debug!("Binding to address {:?}.", self.addr);
         let listener = TcpListener::bind(self.addr)?;
 
+        //TODO: This semaphore is used to limit the number of concurrent connections.
+        // It should be replaced by an implementation of the Service::poll_ready method.
         let conn_control = Rc::new(Semaphore::new(max_connections as _));
 
         let spawn_result = GlommioExecutor { task_q }.spawn(async move {
