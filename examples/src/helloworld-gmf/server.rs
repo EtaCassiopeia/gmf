@@ -3,6 +3,7 @@
 //! actual implementation of the service, and the `main` function is responsible
 //! for creating an instance of `GmfServer` and serving the `MyGreeter` service on it.
 
+use glommio::Placement;
 use std::sync::Arc;
 
 use log::{error, info};
@@ -51,7 +52,10 @@ fn main() {
             let mut tonic = tonic.clone();
             tonic.call(req)
         }),
-        1024,
+        10240,
+        // Specifies a policy by which Executor selects CPUs.
+        //Placement::Unbound,
+        Placement::Fixed(0),
     );
 
     let sender = Arc::clone(&gmf.signal_tx);

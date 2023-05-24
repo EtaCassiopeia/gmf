@@ -41,7 +41,8 @@ let gmf = GmfServer::new(
         let mut tonic = tonic.clone();
         tonic.call(req)
     }),
-    1024,  // max_connections
+    10240,  // max_connections
+    Placement::Fixed(0) //Specifies a policy by which Executor selects CPUs to run on.
 );
 
 gmf.serve(addr).unwrap_or_else(|e| panic!("failed {}", e));
@@ -267,14 +268,14 @@ We've compared the performance of the Tonic-based GRPC server and client impleme
 
 | Metric       | Tonic-based Implementation | GMF-based Implementation |
 |--------------|----------------------------|--------------------------|
-| Requests/sec | 6512.01                    | 8990.59                  |
+| Requests/sec | 6512.01                    | 12009.70                 |
 | Fastest      | 7.71 ms                    | 1.58 ms                  |
-| Slowest      | 62.15 ms                   | 60.11 ms                 |
-| Average      | 28.00 ms                   | 19.43 ms                 |
+| Slowest      | 62.15 ms                   | 45.71 ms                 |
+| Average      | 28.00 ms                   | 16.54 ms                 |
 
 *Requests/sec*: Higher is better. This metric represents the number of requests that the server can handle per second.
 
-We found that GMF-based implementation handled approximately 38.02% more requests per second compared to the Tonic-based implementation.
+We found that GMF-based implementation handled approximately 84% more requests per second compared to the Tonic-based implementation.
 
 ### Using Criterion.rs to Benchmark the GMF-based Implementation
 

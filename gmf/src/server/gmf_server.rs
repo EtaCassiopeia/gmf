@@ -28,6 +28,8 @@ pub struct GmfServer<S, RespBd, Error> {
     pub signal_tx: Arc<Sender<()>>,
     /// A channel used to receive a termination signal from the server.
     signal_rx: Arc<Mutex<Receiver<()>>>,
+    /// Specifies a policy by which Executor selects CPUs for tasks.
+    placement: Placement,
     _phantom: std::marker::PhantomData<(RespBd, Error)>,
 }
 
@@ -45,13 +47,14 @@ where
     RespBd::Error: std::error::Error + Send + Sync,
 {
     /// Creates a new instance of `GmfServer`.
-    pub fn new(service: S, max_connections: usize) -> Self {
+    pub fn new(service: S, max_connections: usize, placement: Placement) -> Self {
         let (sender, receiver) = tokio::sync::mpsc::channel::<()>(1);
         Self {
             service,
             max_connections,
             signal_tx: Arc::new(sender),
             signal_rx: Arc::new(Mutex::new(receiver)),
+            placement,
             _phantom: std::marker::PhantomData,
         }
     }
@@ -71,8 +74,9 @@ where
         let service = self.service.clone();
         let max_connections = self.max_connections.clone();
         let signal_rx_clone = Arc::clone(&self.signal_rx);
+        let placement = self.placement.clone();
 
-        LocalExecutorBuilder::new(Placement::Unbound)
+        LocalExecutorBuilder::new(placement)
             .name(THREAD_NAME)
             .spawn(move || async move {
                 let rpc_server_tq = executor().create_task_queue(
