@@ -36,7 +36,7 @@ impl Greeter for MyGreeter {
     }
 }
 
-// #[cfg(target_os = "linux")]
+#[cfg(target_os = "linux")]
 fn main() {
     env_logger::init();
     use std::net::SocketAddr;
