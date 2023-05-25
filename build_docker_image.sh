@@ -4,7 +4,7 @@
 IMAGE_NAME=rust-protoc
 
 # Docker Image version
-IMAGE_VERSION=1.69.0
+IMAGE_VERSION=nightly-bookworm
 
 # Build Docker Image
 docker build -t ${IMAGE_NAME}:${IMAGE_VERSION} .

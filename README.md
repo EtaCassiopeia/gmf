@@ -124,10 +124,10 @@ Before running the project, you will need to build a Docker image that includes 
    ./build_docker_image.sh
    ```
 
-   This script builds a Docker image named `rust-protoc:1.69.0` by default. If the build is successful, you will see the following message:
+   This script builds a Docker image named `rust-protoc:nightly-bookworm` by default. If the build is successful, you will see the following message:
 
    ```bash
-   Docker Image rust-protoc:1.69.0 has been built successfully.
+   Docker Image rust-protoc:nightly-bookworm has been built successfully.
    ```
 
 ### Step 2: Running the Project with the Docker Image

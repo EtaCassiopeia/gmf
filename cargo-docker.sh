@@ -24,7 +24,7 @@ if ! docker ps | grep -q $CONTAINER_NAME; then
             -v "$(pwd)":/usr/src/app \
             -v "${CARGO_REGISTRY_DIR}:/usr/local/cargo/registry" \
             -w /usr/src/app \
-            rust-protoc:1.69.0 \
+            rust-protoc:nightly-bookworm \
             sleep infinity
     fi
 fi

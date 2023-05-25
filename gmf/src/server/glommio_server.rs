@@ -69,7 +69,7 @@ where
     /// incoming connections and serves them using the provided service.
     /// Each connection is served in its own Glommio task.
     fn serve(&self, service: S) -> Self::Result {
-        let max_connections = self.max_connections.clone();
+        let max_connections = self.max_connections;
         let task_q = self.task_q;
 
         debug!("Binding to address {:?}.", self.addr);

@@ -62,7 +62,7 @@ where
     /// Terminates the server.
     pub async fn terminate(&self) {
         let sender = Arc::clone(&self.signal_tx);
-        if let Err(_) = sender.try_send(()) {
+        if sender.try_send(()).is_err() {
             println!("Failed to send termination signal.");
         }
     }
@@ -72,7 +72,7 @@ where
     /// Graceful shutdown is handled by listening for a CTRL-C signal.
     pub fn serve(&self, addr: SocketAddr) -> glommio::Result<(), ()> {
         let service = self.service.clone();
-        let max_connections = self.max_connections.clone();
+        let max_connections = self.max_connections;
         let signal_rx_clone = Arc::clone(&self.signal_rx);
         let placement = self.placement.clone();
 
