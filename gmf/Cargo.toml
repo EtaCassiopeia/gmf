@@ -7,8 +7,8 @@ description = "An RPC library using Glommio and Tonic. Note: This package only w
 license = "MIT"
 readme = "../README.md"
 repository = "https://github.com/EtaCassiopeia/gmf"
-keywords = ["protobuf", "grpc", "rpc", "futures", "async", "glommio"]
-categories = ["Asynchronous","Network programming","Web programming"]
+keywords = ["protobuf", "grpc", "futures", "async", "glommio"]
+categories = ["asynchronous","network-programming","web-programming"]
 
 [build]
 target = ["x86_64-unknown-linux-gnu", "i686-unknown-linux-gnu","aarch64-unknown-linux-gnu"]
