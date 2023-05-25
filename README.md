@@ -27,7 +27,24 @@ When it comes to handling gRPC services, these techniques allow the efficient pr
 **IMPORTANT:** This project is designed to work on Linux systems only.
 Please ensure you're running a compatible Linux distribution before installing or using this package.
 
-## Running Your Service with GMF
+## Getting Started
+
+To use `gmf`, add the following to your `Cargo.toml`:
+
+```toml
+[dependencies]
+gmf = "0.1.1"
+```
+
+Then you can include it in your project:
+
+```rust
+use gmf::GmfServer;
+use glommio::Placement;
+use std::net::SocketAddr;
+```
+
+## Usage
 
 After defining your service (like `MyGreeter`), you can serve it using `GmfServer` in just a few lines of code:
 
@@ -45,10 +62,9 @@ let gmf = GmfServer::new(
     Placement::Fixed(0) //Specifies a policy by which Executor selects CPUs to run on.
 );
 
+let addr: SocketAddr = "0.0.0.0:50051".parse().unwrap();
 gmf.serve(addr).unwrap_or_else(|e| panic!("failed {}", e));
 ```
-
-The `GmfServer::new()` function takes two parameters: the service function that handles the requests and the maximum number of concurrent connections.
 
 For a full working example, please refer to the [example source code](examples/src/helloworld-gmf/server.rs)
 
