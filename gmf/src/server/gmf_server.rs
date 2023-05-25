@@ -47,6 +47,27 @@ where
     RespBd::Error: std::error::Error + Send + Sync,
 {
     /// Creates a new instance of `GmfServer`.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let greeter: MyGreeter = MyGreeter::default();
+    /// let tonic: GreeterServer<MyGreeter> = GreeterServer::new(greeter);
+    ///
+    /// use glommio::Placement;
+    /// use hyper::service::service_fn;
+    /// use gmf::server::gmf_server::GmfServer;
+    ///
+    /// let gmf = GmfServer::new(
+    ///     service_fn(move |req| {
+    ///         let mut tonic = tonic.clone();
+    ///         tonic.call(req)
+    ///     }),
+    ///     10240,  // max_connections
+    ///     Placement::Fixed(0) //Specifies a policy by which Executor selects CPUs to run on.
+    /// );
+    ///
+    /// ```
     pub fn new(service: S, max_connections: usize, placement: Placement) -> Self {
         let (sender, receiver) = tokio::sync::mpsc::channel::<()>(1);
         Self {
@@ -70,6 +91,19 @@ where
     /// Serves the incoming requests using the provided service, in a separate Glommio task.
     /// Listens for incoming connections on the provided `SocketAddr`.
     /// Graceful shutdown is handled by listening for a CTRL-C signal.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use std::net::SocketAddr;
+    /// use gmf::server::gmf_server::GmfServer;
+    ///
+    /// let gmf = GmfServer::new(...);
+    ///
+    /// let addr: SocketAddr = "0.0.0.0:50051".parse().unwrap();
+    ///
+    /// gmf.serve(addr).unwrap_or_else(|e| panic!("failed {}", e));
+    /// ```
     pub fn serve(&self, addr: SocketAddr) -> glommio::Result<(), ()> {
         let service = self.service.clone();
         let max_connections = self.max_connections;
