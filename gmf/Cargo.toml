@@ -1,14 +1,14 @@
 [package]
 name = "gmf"
-version = "0.1.1"
+version = "0.1.3"
 edition = "2021"
 authors = ["Mohsen Zainalpour <zainalpour@gmail.com>"]
 description = "An RPC library using Glommio and Tonic. Note: This package only works on Linux."
 license = "MIT"
 readme = "../README.md"
 repository = "https://github.com/EtaCassiopeia/gmf"
-keywords = ["protobuf", "grpc", "rpc", "futures", "async", "glommio"]
-categories = ["Asynchronous","Network programming","Web programming"]
+keywords = ["protobuf", "grpc", "futures", "async", "glommio"]
+categories = ["asynchronous","network-programming","web-programming"]
 
 [build]
 target = ["x86_64-unknown-linux-gnu", "i686-unknown-linux-gnu","aarch64-unknown-linux-gnu"]

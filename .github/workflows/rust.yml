@@ -73,7 +73,7 @@ jobs:
 
       - name: Get version
         id: vars
-        run: echo ::set-output name=tag::$(grep "^version" ./gmf/Cargo.toml | head -1 | awk -F'"' '{ print $2 }')
+        run: echo tag=$(grep "^version" ./gmf/Cargo.toml | head -1 | awk -F'"' '{ print $2 }') >> $GITHUB_OUTPUT
 
       - name: Create Release
         id: create_release
