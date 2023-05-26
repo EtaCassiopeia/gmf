@@ -1,6 +1,6 @@
 [package]
 name = "gmf"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Mohsen Zainalpour <zainalpour@gmail.com>"]
 description = "An RPC library using Glommio and Tonic. Note: This package only works on Linux."
