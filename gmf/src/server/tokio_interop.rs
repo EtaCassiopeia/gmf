@@ -12,7 +12,8 @@ use tokio::io::ReadBuf;
 
 /// A wrapper type for AsyncRead + AsyncWrite + Unpin types, providing
 /// interoperability with Tokio's AsyncRead and AsyncWrite traits.
-pub struct TokioIO<T>(pub T)
+#[pin_project::pin_project] // This generates a projection for the inner type.
+pub struct TokioIO<T>(#[pin] pub T)
 where
     T: AsyncRead + AsyncWrite + Unpin;
 
@@ -21,22 +22,21 @@ where
     T: AsyncRead + AsyncWrite + Unpin,
 {
     /// Write some data into the inner type, returning how many bytes were written.
-    fn poll_write(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context,
-        buf: &[u8],
-    ) -> Poll<io::Result<usize>> {
-        Pin::new(&mut self.0).poll_write(cx, buf)
+    fn poll_write(self: Pin<&mut Self>, cx: &mut Context, buf: &[u8]) -> Poll<io::Result<usize>> {
+        // This is the same as  Pin::new(&mut self.0).poll_write(cx, buf) with the source type of `mut self`
+        // using projection makes it easier to read.
+        let this = self.project();
+        this.0.poll_write(cx, buf)
     }
 
     /// Flushes the inner type.
-    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<io::Result<()>> {
-        Pin::new(&mut self.0).poll_flush(cx)
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<io::Result<()>> {
+        self.project().0.poll_flush(cx)
     }
 
     /// Shuts down the inner type, flushing any buffered data.
-    fn poll_shutdown(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<io::Result<()>> {
-        Pin::new(&mut self.0).poll_close(cx)
+    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context) -> Poll<io::Result<()>> {
+        self.project().0.poll_close(cx)
     }
 }
 
@@ -46,11 +46,12 @@ where
 {
     /// Reads some data from the inner type, returning how many bytes were read.
     fn poll_read(
-        mut self: Pin<&mut Self>,
+        self: Pin<&mut Self>,
         cx: &mut Context,
         buf: &mut ReadBuf<'_>,
     ) -> Poll<io::Result<()>> {
-        Pin::new(&mut self.0)
+        self.project()
+            .0
             .poll_read(cx, buf.initialize_unfilled())
             .map(|n| {
                 if let Ok(n) = n {
