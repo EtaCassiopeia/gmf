@@ -39,15 +39,15 @@ To use `gmf`, add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-gmf = "0.1.3"
+gmf = "1.0.0"
 ```
 
 Then you can include it in your project:
 
 ```rust
 use gmf::GmfServer;
-use glommio::Placement;
 use std::net::SocketAddr;
+use tower::Service;
 ```
 
 ## Usage
@@ -65,11 +65,10 @@ let gmf = GmfServer::new(
         tonic.call(req)
     }),
     10240,  // max_connections
-    Placement::Fixed(0) //Specifies a policy by which Executor selects CPUs to run on.
 );
 
 let addr: SocketAddr = "0.0.0.0:50051".parse().unwrap();
-gmf.serve(addr).unwrap_or_else(|e| panic!("failed {}", e));
+gmf.serve(addr).unwrap_or_else(|e| panic!("failed {e}"));
 ```
 
 For a full working example, please refer to the [example source code](examples/src/helloworld-gmf/server.rs)
