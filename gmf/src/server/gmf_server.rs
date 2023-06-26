@@ -4,14 +4,12 @@
 //! using the provided hyper service.
 
 use std::net::SocketAddr;
-use std::sync::Arc;
 
 use glommio::{executor, GlommioError, Latency, LocalExecutorBuilder, Placement, Shares, Task};
 use hyper::body::HttpBody;
 use hyper::http;
 use log::info;
-use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::sync::Mutex;
+use num_cpus;
 use tower_service::Service;
 
 use crate::server::glommio_server::GlommioServer;
@@ -24,12 +22,6 @@ pub struct GmfServer<S, RespBd, Error> {
     /// The service that handles incoming GRPC requests.
     service: S,
     max_connections: usize,
-    /// A channel used to send a termination signal to the server.
-    pub signal_tx: Arc<Sender<()>>,
-    /// A channel used to receive a termination signal from the server.
-    signal_rx: Arc<Mutex<Receiver<()>>>,
-    /// Specifies a policy by which Executor selects CPUs for tasks.
-    placement: Placement,
     _phantom: std::marker::PhantomData<(RespBd, Error)>,
 }
 
@@ -64,27 +56,14 @@ where
     ///         tonic.call(req)
     ///     }),
     ///     10240,  // max_connections
-    ///     Placement::Fixed(0) //Specifies a policy by which Executor selects CPUs to run on.
     /// );
     ///
     /// ```
-    pub fn new(service: S, max_connections: usize, placement: Placement) -> Self {
-        let (sender, receiver) = tokio::sync::mpsc::channel::<()>(1);
+    pub fn new(service: S, max_connections: usize) -> Self {
         Self {
             service,
             max_connections,
-            signal_tx: Arc::new(sender),
-            signal_rx: Arc::new(Mutex::new(receiver)),
-            placement,
             _phantom: std::marker::PhantomData,
-        }
-    }
-
-    /// Terminates the server.
-    pub async fn terminate(&self) {
-        let sender = Arc::clone(&self.signal_tx);
-        if sender.try_send(()).is_err() {
-            println!("Failed to send termination signal.");
         }
     }
 
@@ -104,38 +83,50 @@ where
     ///
     /// gmf.serve(addr).unwrap_or_else(|e| panic!("failed {}", e));
     /// ```
+    ///
     pub fn serve(&self, addr: SocketAddr) -> glommio::Result<(), ()> {
         let service = self.service.clone();
         let max_connections = self.max_connections;
-        let signal_rx_clone = Arc::clone(&self.signal_rx);
-        let placement = self.placement.clone();
 
-        LocalExecutorBuilder::new(placement)
-            .name(THREAD_NAME)
-            .spawn(move || async move {
-                let rpc_server_tq = executor().create_task_queue(
-                    Shares::default(),
-                    Latency::NotImportant,
-                    "rpc_server_tq",
-                );
+        let cpu_count = num_cpus::get_physical(); // get the number of physical CPUs available
 
-                let server: GlommioServer =
-                    GlommioServer::new(max_connections, rpc_server_tq, addr);
+        let mut join_handles = vec![];
 
-                let server_task: Task<Result<(), GlommioError<()>>> =
-                    server.serve(service).expect("GMF server failed!");
+        for cpu in 0..cpu_count {
+            let placement = Placement::Fixed(cpu); // create a Placement for each CPU
+            let service = service.clone();
 
-                let server_join_handle = server_task.detach();
+            let join_handle = LocalExecutorBuilder::new(placement)
+                .name(&format!("{}{}", THREAD_NAME, cpu)) // give each thread a unique name
+                .spawn(move || async move {
+                    let rpc_server_tq = executor().create_task_queue(
+                        Shares::default(),
+                        Latency::NotImportant,
+                        &format!("rpc_server_tq{}", cpu), // give each task queue a unique name
+                    );
 
-                info!("Listening for GRPC requests on {}", addr);
+                    let server: GlommioServer =
+                        GlommioServer::new(max_connections, rpc_server_tq, addr);
 
-                let mut signal_rx = signal_rx_clone.lock().await;
-                signal_rx.recv().await;
+                    let server_task: Task<Result<(), GlommioError<()>>> =
+                        server.serve(service).expect("GMF server failed!");
 
-                server_join_handle.cancel();
-                server_join_handle.await;
-            })
-            .expect("unable to spawn connection handler")
-            .join()
+                    let server_join_handle = server_task.detach();
+
+                    info!("Listening for GRPC requests on {} with CPU {}", addr, cpu);
+
+                    server_join_handle.await;
+                })
+                .expect("unable to spawn connection handler");
+
+            join_handles.push(join_handle); // collect the join handles
+        }
+
+        // wait for all servers to finish
+        for handle in join_handles {
+            handle.join()?;
+        }
+
+        Ok(())
     }
 }
