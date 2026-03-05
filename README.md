@@ -4,7 +4,7 @@
 
 A high-performance, runtime-agnostic gRPC server framework for Rust using thread-per-core architecture.
 
-GMF pins one event loop per physical CPU core with no work-stealing, no lock contention, and no cross-thread synchronization. In benchmarks, this achieves ~84% higher throughput than standard tonic.
+GMF pins one event loop per physical CPU core with no work-stealing, no shared task queues, and no lock contention on the request path.
 
 ## Runtimes
 
@@ -50,25 +50,31 @@ MonoioServer::builder()
 
 Where `signal` is any `Future<Output = ()> + Send + 'static` (e.g. a ctrl-c handler).
 
+## How It Works
+
+![Thread-Per-Core Architecture](docs/diagrams/thread-per-core.svg)
+
+Each core runs an independent event loop with its own TCP listener and connection limiter. On Linux, the kernel distributes connections across cores via `SO_REUSEPORT` and each core gets its own io_uring instance (monoio/glommio) or epoll fd (tokio). No userspace load balancing, no shared task queues.
+
 ## Documentation
 
 | Document | Description |
 |----------|-------------|
-| [Architecture](docs/architecture.md) | Thread-per-core design, IO model, runtime traits |
+| [Architecture](docs/architecture.md) | Thread-per-core design, io_uring, CPU pinning, request lifecycle |
 | [Benchmarking](docs/benchmarking.md) | How to benchmark with `ghz` and criterion |
-| [Development](docs/development.md) | Building, testing, Docker, Nix setup |
+| [Development](docs/development.md) | Building, testing, Docker setup |
 | [Platform Notes](docs/platforms.md) | Linux vs macOS differences, Docker IPv6 |
 
 ## Performance
 
-| Metric | tonic (baseline) | GMF |
-|--------|-----------------|-----|
-| Requests/sec | 6,512 | 12,010 |
-| Avg latency | 28.00 ms | 16.54 ms |
-| Min latency | 7.71 ms | 1.58 ms |
+GMF's architecture is designed to outperform work-stealing runtimes on dedicated multi-core
+Linux servers by eliminating shared task queues and lock contention, leveraging io_uring
+syscall batching (monoio/glommio runtimes), and maintaining CPU cache locality through
+core pinning. The advantage grows with core count and hardware isolation.
 
-*200 concurrent connections, 2000 total requests via `ghz`.*
+See [Benchmarking](docs/benchmarking.md) for how to run your own benchmarks and
+[Architecture](docs/architecture.md) for a deep dive into why thread-per-core scales better.
 
 ## License
 
-MIT
+Apache-2.0

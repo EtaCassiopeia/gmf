@@ -1,0 +1,199 @@
+direction: down
+
+title: {
+  label: "CPU Pinning & Cache Locality"
+  near: top-center
+  shape: text
+  style: {
+    font-size: 24
+    bold: true
+  }
+}
+
+without: {
+  label: "Without Pinning (tonic/tokio)"
+  style: {
+    fill: "#fff3e0"
+    stroke: "#e65100"
+    border-radius: 8
+  }
+
+  thread: {
+    label: "Thread T"
+    shape: person
+    style: { fill: "#ffe0b2" }
+  }
+
+  c0: {
+    label: ""
+    style: { fill: "#ffccbc"; border-radius: 4 }
+
+    core: {
+      label: "Core 0"
+      shape: rectangle
+      style: { fill: "#ffab91" }
+    }
+    l1: {
+      label: "L1/L2 Cache"
+      shape: cylinder
+      style: { fill: "#ff8a65" }
+    }
+    core -> l1: warm
+  }
+
+  c1: {
+    label: ""
+    style: { fill: "#ffccbc"; border-radius: 4 }
+
+    core: {
+      label: "Core 1"
+      shape: rectangle
+      style: { fill: "#ffab91" }
+    }
+    l1: {
+      label: "L1/L2 Cache"
+      shape: cylinder
+      style: { fill: "#ff8a65" }
+    }
+    core -> l1: cold
+  }
+
+  c2: {
+    label: ""
+    style: { fill: "#ffccbc"; border-radius: 4 }
+
+    core: {
+      label: "Core 2"
+      shape: rectangle
+      style: { fill: "#ffab91" }
+    }
+    l1: {
+      label: "L1/L2 Cache"
+      shape: cylinder
+      style: { fill: "#ff8a65" }
+    }
+    core -> l1: cold
+  }
+
+  thread -> c0.core: "run (tick 1)" {
+    style: { stroke: "#d84315"; stroke-width: 2 }
+  }
+  thread -> c1.core: "migrate (tick 2)" {
+    style: { stroke: "#d84315"; stroke-dash: 5; stroke-width: 2 }
+  }
+  thread -> c2.core: "migrate (tick 3)" {
+    style: { stroke: "#d84315"; stroke-dash: 5; stroke-width: 2 }
+  }
+
+  problem: {
+    label: |md
+      Cache cold on every migration
+      ~100 cycle penalty per L2 miss
+      Data refetched from L3/RAM
+    |
+    shape: text
+    style: {
+      font-size: 13
+      font-color: "#bf360c"
+    }
+  }
+}
+
+with: {
+  label: "With Pinning (GMF: sched_setaffinity)"
+  style: {
+    fill: "#e8f5e9"
+    stroke: "#1b5e20"
+    border-radius: 8
+  }
+
+  t0: {
+    label: "Thread 0"
+    shape: person
+    style: { fill: "#c8e6c9" }
+  }
+  t1: {
+    label: "Thread 1"
+    shape: person
+    style: { fill: "#c8e6c9" }
+  }
+  t2: {
+    label: "Thread 2"
+    shape: person
+    style: { fill: "#c8e6c9" }
+  }
+
+  c0: {
+    label: ""
+    style: { fill: "#a5d6a7"; border-radius: 4 }
+
+    core: {
+      label: "Core 0"
+      shape: rectangle
+      style: { fill: "#81c784" }
+    }
+    l1: {
+      label: "L1/L2 Cache"
+      shape: cylinder
+      style: { fill: "#66bb6a" }
+    }
+    core -> l1: always warm
+  }
+
+  c1: {
+    label: ""
+    style: { fill: "#a5d6a7"; border-radius: 4 }
+
+    core: {
+      label: "Core 1"
+      shape: rectangle
+      style: { fill: "#81c784" }
+    }
+    l1: {
+      label: "L1/L2 Cache"
+      shape: cylinder
+      style: { fill: "#66bb6a" }
+    }
+    core -> l1: always warm
+  }
+
+  c2: {
+    label: ""
+    style: { fill: "#a5d6a7"; border-radius: 4 }
+
+    core: {
+      label: "Core 2"
+      shape: rectangle
+      style: { fill: "#81c784" }
+    }
+    l1: {
+      label: "L1/L2 Cache"
+      shape: cylinder
+      style: { fill: "#66bb6a" }
+    }
+    core -> l1: always warm
+  }
+
+  t0 -> c0.core: pinned {
+    style: { stroke: "#2e7d32"; stroke-width: 3 }
+  }
+  t1 -> c1.core: pinned {
+    style: { stroke: "#2e7d32"; stroke-width: 3 }
+  }
+  t2 -> c2.core: pinned {
+    style: { stroke: "#2e7d32"; stroke-width: 3 }
+  }
+
+  benefit: {
+    label: |md
+      Cache stays warm across requests
+      Connection state in L1/L2
+      No migration overhead
+    |
+    shape: text
+    style: {
+      font-size: 13
+      font-color: "#1b5e20"
+    }
+  }
+}

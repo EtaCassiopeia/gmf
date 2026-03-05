@@ -1,7 +1,7 @@
-use helloworld::greeter_client::GreeterClient;
-use helloworld::HelloRequest;
+use hello_world::greeter_client::GreeterClient;
+use hello_world::HelloRequest;
 
-pub mod helloworld {
+pub mod hello_world {
     tonic::include_proto!("helloworld");
 }
 

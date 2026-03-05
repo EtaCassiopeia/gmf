@@ -1,0 +1,157 @@
+direction: down
+
+title: {
+  label: "io_uring vs epoll: Syscall Overhead"
+  near: top-center
+  shape: text
+  style: {
+    font-size: 24
+    bold: true
+  }
+}
+
+epoll: {
+  label: "epoll (Traditional)"
+  style: {
+    fill: "#fff3e0"
+    stroke: "#e65100"
+    border-radius: 8
+  }
+
+  app: {
+    label: "Userspace"
+    style: {
+      fill: "#ffe0b2"
+      stroke: "#ef6c00"
+      border-radius: 4
+    }
+
+    wait: "epoll_wait()"
+    read: "read(fd)"
+    write: "write(fd)"
+    process: "Process data"
+  }
+
+  kern: {
+    label: "Kernel"
+    style: {
+      fill: "#ffccbc"
+      stroke: "#d84315"
+      border-radius: 4
+    }
+
+    k_wait: "check readiness"
+    k_read: "copy to user buf"
+    k_write: "copy from user buf"
+  }
+
+  app.wait -> kern.k_wait: "syscall 1" {
+    style: { stroke: "#d84315"; stroke-width: 2 }
+  }
+  kern.k_wait -> app.wait: "ready fds" {
+    style: { stroke: "#d84315"; stroke-dash: 3 }
+  }
+  app.wait -> app.read
+  app.read -> kern.k_read: "syscall 2" {
+    style: { stroke: "#d84315"; stroke-width: 2 }
+  }
+  kern.k_read -> app.process: "data" {
+    style: { stroke: "#d84315"; stroke-dash: 3 }
+  }
+  app.process -> app.write
+  app.write -> kern.k_write: "syscall 3" {
+    style: { stroke: "#d84315"; stroke-width: 2 }
+  }
+
+  cost: {
+    label: "N ops = N syscalls\n(context switch each time)"
+    shape: text
+    style: {
+      font-size: 14
+      font-color: "#bf360c"
+      bold: true
+    }
+  }
+}
+
+iouring: {
+  label: "io_uring (monoio / glommio)"
+  style: {
+    fill: "#e8f5e9"
+    stroke: "#1b5e20"
+    border-radius: 8
+  }
+
+  app: {
+    label: "Userspace"
+    style: {
+      fill: "#c8e6c9"
+      stroke: "#2e7d32"
+      border-radius: 4
+    }
+
+    sqe1: "Write SQE: read(fd)"
+    sqe2: "Write SQE: write(fd)"
+    sqe3: "Write SQE: read(fd2)"
+    submit: "io_uring_enter()"
+    reap: "Read CQEs"
+  }
+
+  ring: {
+    label: "Shared Memory Rings"
+    style: {
+      fill: "#a5d6a7"
+      stroke: "#388e3c"
+      border-radius: 4
+    }
+
+    sq: {
+      label: "Submission Queue (SQ)"
+      shape: queue
+      style: { fill: "#81c784" }
+    }
+    cq: {
+      label: "Completion Queue (CQ)"
+      shape: queue
+      style: { fill: "#81c784" }
+    }
+  }
+
+  kern: {
+    label: "Kernel"
+    style: {
+      fill: "#c8e6c9"
+      stroke: "#2e7d32"
+      border-radius: 4
+    }
+
+    process: "Process all SQEs\n(batch IO)"
+    poll: "SQPOLL thread\n(optional: zero syscalls)"
+  }
+
+  app.sqe1 -> ring.sq
+  app.sqe2 -> ring.sq
+  app.sqe3 -> ring.sq
+  app.submit -> kern.process: "1 syscall for N ops" {
+    style: { stroke: "#2e7d32"; stroke-width: 3 }
+  }
+  ring.sq -> kern.process: {
+    style: { stroke: "#388e3c" }
+  }
+  kern.process -> ring.cq: completions {
+    style: { stroke: "#388e3c" }
+  }
+  ring.cq -> app.reap: {
+    style: { stroke: "#388e3c" }
+  }
+
+  cost: {
+    label: "N ops = 1 syscall\n(or 0 with SQPOLL)"
+    shape: text
+    style: {
+      font-size: 14
+      font-color: "#1b5e20"
+      bold: true
+    }
+  }
+}

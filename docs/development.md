@@ -13,9 +13,6 @@ brew install protobuf
 
 # Ubuntu/Debian
 apt-get install -y protobuf-compiler
-
-# Nix
-nix-shell -p protobuf
 ```
 
 ## Building
@@ -76,33 +73,11 @@ cargo clippy --features tokio-runtime --no-default-features -p gmf -- -D warning
 cargo clippy -p examples -- -D warnings
 ```
 
-## Docker (for non-Linux development)
+## Docker (for benchmarking)
 
-If you need to test the glommio runtime or run on a Linux-like environment:
-
-### Build the Docker Image
+The Dockerfile builds all server binaries and runs benchmarks. See [Benchmarking](benchmarking.md) for details.
 
 ```bash
-chmod +x build_docker_image.sh
-./build_docker_image.sh
+docker build --platform linux/amd64 -t gmf-bench .
+docker run --platform linux/amd64 --rm gmf-bench
 ```
-
-### Run Commands in Docker
-
-```bash
-chmod +x cargo-docker.sh
-
-./cargo-docker.sh check
-./cargo-docker.sh test
-./cargo-docker.sh run --package examples --bin helloworld-gmf-server
-```
-
-## Nix
-
-A `shell.nix` is provided for reproducible dev environments:
-
-```bash
-nix-shell
-```
-
-This gives you `rustc`, `cargo`, and `protobuf` without installing them globally.

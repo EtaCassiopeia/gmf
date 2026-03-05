@@ -1,9 +1,9 @@
 use tonic::{transport::Server, Request, Response, Status};
 
-use helloworld::greeter_server::{Greeter, GreeterServer};
-use helloworld::{HelloReply, HelloRequest};
+use hello_world::greeter_server::{Greeter, GreeterServer};
+use hello_world::{HelloReply, HelloRequest};
 
-pub mod helloworld {
+pub mod hello_world {
     tonic::include_proto!("helloworld");
 }
 

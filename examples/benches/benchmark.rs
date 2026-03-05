@@ -24,7 +24,8 @@ fn benchmark_run_client(c: &mut Criterion) {
     group.bench_function("run_client", |b| {
         b.iter(|| {
             let runtime = tokio::runtime::Runtime::new().expect("tokio runtime");
-            runtime.block_on(async { black_box(run_client("http://0.0.0.0:50051")).await });
+            let _ =
+                runtime.block_on(async { black_box(run_client("http://0.0.0.0:50051")).await });
         })
     });
 

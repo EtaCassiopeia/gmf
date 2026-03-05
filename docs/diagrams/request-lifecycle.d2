@@ -1,0 +1,126 @@
+direction: right
+
+title: {
+  label: "GMF Request Lifecycle"
+  near: top-center
+  shape: text
+  style: {
+    font-size: 24
+    bold: true
+  }
+}
+
+client: {
+  label: "gRPC Client"
+  shape: person
+  style: {
+    fill: "#f3e5f5"
+    stroke: "#4a148c"
+  }
+}
+
+kernel: {
+  label: "Linux Kernel"
+  style: {
+    fill: "#e3f2fd"
+    stroke: "#0d47a1"
+    border-radius: 8
+  }
+
+  reuseport: {
+    label: "SO_REUSEPORT\ndistribute by\nsrc IP:port hash"
+    shape: diamond
+    style: {
+      fill: "#bbdefb"
+      stroke: "#1565c0"
+    }
+  }
+}
+
+core_n: {
+  label: "Core N (pinned thread)"
+  style: {
+    fill: "#e8f5e9"
+    stroke: "#1b5e20"
+    border-radius: 8
+  }
+
+  listener: {
+    label: "TcpListener\n(RuntimeTcpListener::accept)"
+    shape: rectangle
+    style: { fill: "#c8e6c9"; stroke: "#2e7d32" }
+  }
+
+  semaphore: {
+    label: "Semaphore\ntry_acquire()\nRc/Cell (no atomics)"
+    shape: hexagon
+    style: { fill: "#a5d6a7"; stroke: "#388e3c" }
+  }
+
+  compat: {
+    label: "IO Bridge\nmonoio-compat\nStreamWrapper\n+ MonoioIo"
+    shape: rectangle
+    style: { fill: "#c8e6c9"; stroke: "#2e7d32" }
+  }
+
+  hyper: {
+    label: "hyper HTTP/2\nhttp2::Builder\nserve_connection()"
+    shape: rectangle
+    style: { fill: "#b2dfdb"; stroke: "#00695c" }
+  }
+
+  adapter: {
+    label: "TowerToHyperService\n(clone inner svc)"
+    shape: rectangle
+    style: { fill: "#b2dfdb"; stroke: "#00695c" }
+  }
+
+  tonic: {
+    label: "tonic Handler\nGreeterServer\n(user code)"
+    shape: rectangle
+    style: { fill: "#dcedc8"; stroke: "#33691e" }
+  }
+
+  listener -> semaphore: "accepted stream"
+  semaphore -> compat: "permit granted"
+  compat -> hyper: "hyper::rt::Read+Write"
+  hyper -> adapter: "Request<Incoming>"
+  adapter -> tonic: "Request<Incoming>"
+}
+
+response: {
+  label: "Response<BoxBody>"
+  shape: parallelogram
+  style: {
+    fill: "#fce4ec"
+    stroke: "#880e4f"
+  }
+}
+
+client -> kernel.reuseport: "TCP SYN\n:50051" {
+  style: { stroke: "#7b1fa2"; stroke-width: 2 }
+}
+kernel.reuseport -> core_n.listener: "connection to core N" {
+  style: { stroke: "#1565c0"; stroke-width: 2 }
+}
+core_n.tonic -> response: "serialize protobuf" {
+  style: { stroke: "#33691e" }
+}
+response -> client: "HTTP/2 DATA frame" {
+  style: { stroke: "#880e4f"; stroke-width: 2 }
+}
+
+legend: {
+  label: |md
+    **Code path:**
+    accept_loop() → listener.accept() → semaphore.try_acquire()
+    → stream.into_hyper_io() → http2::Builder.serve_connection()
+    → TowerToHyperService.call() → tonic handler
+  |
+  near: bottom-center
+  shape: text
+  style: {
+    font-size: 12
+    font-color: "#37474f"
+  }
+}
