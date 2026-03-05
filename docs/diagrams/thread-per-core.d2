@@ -1,0 +1,194 @@
+direction: right
+
+title: {
+  label: Thread-Per-Core (GMF) vs Work-Stealing (tonic)
+  near: top-center
+  shape: text
+  style: {
+    font-size: 24
+    bold: true
+  }
+}
+
+tonic: {
+  label: "tonic / tokio (Work-Stealing)"
+  style: {
+    fill: "#fff3e0"
+    stroke: "#e65100"
+    border-radius: 8
+  }
+
+  queue: {
+    label: "Shared Task Queue"
+    shape: queue
+    style: {
+      fill: "#ffccbc"
+      stroke: "#bf360c"
+    }
+  }
+
+  lock: {
+    label: "Arc<Mutex<...>>\nAtomic contention"
+    shape: hexagon
+    style: {
+      fill: "#ffab91"
+      stroke: "#d84315"
+    }
+  }
+
+  t0: {
+    label: "Worker 0\n(steals work)"
+    shape: rectangle
+    style: { fill: "#ffe0b2" }
+  }
+  t1: {
+    label: "Worker 1\n(steals work)"
+    shape: rectangle
+    style: { fill: "#ffe0b2" }
+  }
+  t2: {
+    label: "Worker 2\n(steals work)"
+    shape: rectangle
+    style: { fill: "#ffe0b2" }
+  }
+
+  queue -> lock: contend {
+    style: {
+      stroke: "#d84315"
+      stroke-dash: 3
+    }
+  }
+  lock -> t0: {
+    style: { stroke: "#e65100" }
+  }
+  lock -> t1: {
+    style: { stroke: "#e65100" }
+  }
+  lock -> t2: {
+    style: { stroke: "#e65100" }
+  }
+
+  t0 -> t1: steal {
+    style: {
+      stroke: "#d84315"
+      stroke-dash: 5
+    }
+  }
+  t1 -> t2: steal {
+    style: {
+      stroke: "#d84315"
+      stroke-dash: 5
+    }
+  }
+}
+
+gmf: {
+  label: "GMF (Shared-Nothing)"
+  style: {
+    fill: "#e8f5e9"
+    stroke: "#1b5e20"
+    border-radius: 8
+  }
+
+  c0: {
+    label: |md
+      **Core 0**
+      TcpListener
+      EventLoop
+      Rc\<Cell\> semaphore
+    |
+    shape: rectangle
+    style: {
+      fill: "#c8e6c9"
+      stroke: "#2e7d32"
+    }
+  }
+  c1: {
+    label: |md
+      **Core 1**
+      TcpListener
+      EventLoop
+      Rc\<Cell\> semaphore
+    |
+    shape: rectangle
+    style: {
+      fill: "#c8e6c9"
+      stroke: "#2e7d32"
+    }
+  }
+  c2: {
+    label: |md
+      **Core 2**
+      TcpListener
+      EventLoop
+      Rc\<Cell\> semaphore
+    |
+    shape: rectangle
+    style: {
+      fill: "#c8e6c9"
+      stroke: "#2e7d32"
+    }
+  }
+
+  no_sync: {
+    label: "Zero cross-thread sync\nNo Arc, No Mutex, No stealing"
+    shape: text
+    style: {
+      font-size: 14
+      font-color: "#1b5e20"
+      italic: true
+    }
+  }
+}
+
+kernel: {
+  label: ""
+  style: {
+    fill: "#e3f2fd"
+    stroke: "#0d47a1"
+    border-radius: 8
+  }
+
+  so_reuseport: {
+    label: "SO_REUSEPORT\n(kernel load balancing)"
+    shape: diamond
+    style: {
+      fill: "#bbdefb"
+      stroke: "#1565c0"
+    }
+  }
+
+  port: {
+    label: ":50051"
+    shape: oval
+    style: {
+      fill: "#90caf9"
+      stroke: "#0d47a1"
+    }
+  }
+
+  port -> so_reuseport: incoming connections
+}
+
+clients: {
+  label: "Clients"
+  shape: cloud
+  style: {
+    fill: "#f3e5f5"
+    stroke: "#4a148c"
+  }
+}
+
+clients -> kernel.port: TCP SYN {
+  style: { stroke: "#7b1fa2" }
+}
+
+kernel.so_reuseport -> gmf.c0: {
+  style: { stroke: "#1565c0" }
+}
+kernel.so_reuseport -> gmf.c1: {
+  style: { stroke: "#1565c0" }
+}
+kernel.so_reuseport -> gmf.c2: {
+  style: { stroke: "#1565c0" }
+}
