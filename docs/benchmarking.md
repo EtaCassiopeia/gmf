@@ -86,7 +86,7 @@ Reports are saved to `target/criterion/report/index.html`.
 ## GitHub Actions (Native Linux)
 
 The benchmark workflow runs on native Linux via GitHub Actions, triggered automatically
-on push to `feat/runtime-agnostic-v2` or manually via `workflow_dispatch`.
+on push to `master`, on pull requests targeting `master`, or manually via `workflow_dispatch`.
 
 ```bash
 # Trigger manually with custom parameters

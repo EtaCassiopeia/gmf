@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GMF — Thread-Per-Core gRPC Server Framework</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 4rem auto; padding: 0 1rem; line-height: 1.6; color: #1a1a1a; }
+    h1 { font-size: 1.8rem; }
+    a { color: #0366d6; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    ul { padding-left: 1.2rem; }
+    li { margin-bottom: 0.5rem; }
+    code { background: #f0f0f0; padding: 0.15em 0.3em; border-radius: 3px; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <h1>GMF</h1>
+  <p>A runtime-agnostic, high-performance gRPC server framework for Rust using thread-per-core architecture.</p>
+
+  <h2>Documentation</h2>
+  <ul>
+    <li><a href="https://github.com/EtaCassiopeia/gmf#readme">README</a></li>
+    <li><a href="https://github.com/EtaCassiopeia/gmf/blob/master/docs/architecture.md">Architecture</a> — thread-per-core design, io_uring, CPU pinning</li>
+    <li><a href="https://github.com/EtaCassiopeia/gmf/blob/master/docs/benchmarking.md">Benchmarking</a> — ghz, criterion, Docker</li>
+    <li><a href="https://github.com/EtaCassiopeia/gmf/blob/master/docs/development.md">Development</a> — building, testing, Docker setup</li>
+    <li><a href="https://github.com/EtaCassiopeia/gmf/blob/master/docs/platforms.md">Platform Notes</a> — Linux vs macOS, Docker IPv6</li>
+  </ul>
+
+  <h2>Install</h2>
+  <pre><code>[dependencies]
+gmf = "2.0.0"</code></pre>
+
+  <p><a href="https://crates.io/crates/gmf">crates.io</a> · <a href="https://github.com/EtaCassiopeia/gmf">GitHub</a></p>
+</body>
+</html>
