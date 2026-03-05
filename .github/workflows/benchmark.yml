@@ -2,7 +2,9 @@ name: Benchmark
 
 on:
   push:
-    branches: [feat/runtime-agnostic-v2]
+    branches: [master]
+  pull_request:
+    branches: [master]
   workflow_dispatch:
     inputs:
       concurrency:

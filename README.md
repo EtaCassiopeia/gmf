@@ -1,6 +1,6 @@
 # GMF - Thread-Per-Core gRPC Server Framework
 
-![Rust](https://github.com/EtaCassiopeia/gmf/actions/workflows/rust.yml/badge.svg)
+![CI](https://github.com/EtaCassiopeia/gmf/actions/workflows/ci.yml/badge.svg)
 
 A high-performance, runtime-agnostic gRPC server framework for Rust using thread-per-core architecture.
 
