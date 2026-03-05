@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 
 use tonic::{Request, Response, Status};
 
-use gmf::server::MonoioServer;
+use gmf::server::TokioServer;
 use hello_world::greeter_server::{Greeter, GreeterServer};
 use hello_world::{HelloReply, HelloRequest};
 
@@ -34,7 +34,7 @@ fn main() {
     let port = std::env::var("GRPC_PORT").unwrap_or_else(|_| "50051".to_string());
     let addr: SocketAddr = format!("0.0.0.0:{port}").parse().expect("valid address");
 
-    MonoioServer::builder()
+    TokioServer::builder()
         .addr(addr)
         .max_connections(10240)
         .build()

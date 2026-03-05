@@ -1,0 +1,6 @@
+target/
+.git/
+docs/
+*.md
+.github/
+.claude/

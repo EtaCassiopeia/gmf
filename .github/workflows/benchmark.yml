@@ -1,0 +1,146 @@
+name: Benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      concurrency:
+        description: 'Concurrent gRPC connections'
+        default: '200'
+        type: string
+      total:
+        description: 'Total requests per benchmark'
+        default: '100000'
+        type: string
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install protobuf compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: Install ghz
+        run: |
+          curl -sSL https://github.com/bojand/ghz/releases/download/v0.121.0/ghz-linux-x86_64.tar.gz \
+            | sudo tar xz -C /usr/local/bin ghz
+
+      - name: Cache cargo registry and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: bench-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: bench-${{ runner.os }}-
+
+      - name: Build servers (release)
+        run: |
+          cargo build --release -p examples --bin helloworld-gmf-server
+          cargo build --release -p examples --bin helloworld-gmf-tokio-server \
+            --no-default-features --features gmf-tokio
+          cargo build --release -p examples --bin helloworld-tonic-server
+
+      - name: Check io_uring support
+        run: |
+          echo "Kernel: $(uname -r)"
+          echo "CPU cores: $(nproc)"
+          cat /proc/cpuinfo | grep "model name" | head -1
+
+      - name: Run benchmarks
+        run: |
+          CONCURRENCY="${{ inputs.concurrency }}"
+          TOTAL="${{ inputs.total }}"
+          PROTO="examples/proto/helloworld/helloworld.proto"
+          IMPORT="examples/proto"
+          CALL="helloworld.Greeter.SayHello"
+          DATA='{"name": "world"}'
+
+          mkdir -p bench-results
+
+          declare -A servers
+          servers=(
+            ["GMF (monoio)"]="target/release/helloworld-gmf-server:50051"
+            ["GMF (tokio)"]="target/release/helloworld-gmf-tokio-server:50052"
+            ["Tonic (tokio)"]="target/release/helloworld-tonic-server:50053"
+          )
+
+          # Run in deterministic order
+          for label in "GMF (monoio)" "GMF (tokio)" "Tonic (tokio)"; do
+            IFS=':' read -r binary port <<< "${servers[$label]}"
+            safe_name=$(echo "$label" | tr ' ()' '___')
+            echo "=== Benchmarking: $label on port $port ==="
+
+            GRPC_PORT="$port" "$binary" &
+            pid=$!
+            sleep 2
+
+            if ! kill -0 "$pid" 2>/dev/null; then
+              echo "FAILED: $label did not start"
+              continue
+            fi
+
+            # Warmup
+            ghz --insecure --proto "$PROTO" --import-paths "$IMPORT" \
+              --call "$CALL" -d "$DATA" -c 50 -n 5000 \
+              "127.0.0.1:${port}" > /dev/null 2>&1 || true
+
+            # Benchmark
+            ghz --insecure --proto "$PROTO" --import-paths "$IMPORT" \
+              --call "$CALL" -d "$DATA" \
+              -c "$CONCURRENCY" -n "$TOTAL" \
+              --format json \
+              "127.0.0.1:${port}" > "bench-results/${safe_name}.json" 2>&1
+
+            kill -9 "$pid" 2>/dev/null || true
+            wait "$pid" 2>/dev/null || true
+            sleep 1
+          done
+
+      - name: Generate summary
+        run: |
+          echo "## Benchmark Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Kernel**: $(uname -r)" >> $GITHUB_STEP_SUMMARY
+          echo "- **CPU**: $(grep 'model name' /proc/cpuinfo | head -1 | cut -d: -f2 | xargs)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cores**: $(nproc)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Concurrency**: ${{ inputs.concurrency }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total requests**: ${{ inputs.total }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Framework | RPS | Avg Latency | p50 | p99 | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|-----|-------------|-----|-----|--------|" >> $GITHUB_STEP_SUMMARY
+
+          for label in "GMF (monoio)" "GMF (tokio)" "Tonic (tokio)"; do
+            safe_name=$(echo "$label" | tr ' ()' '___')
+            json="bench-results/${safe_name}.json"
+            if [ -f "$json" ]; then
+              row=$(python3 -c "
+          import json
+          d = json.load(open('$json'))
+          rps = d.get('rps', 0)
+          avg = d.get('average', 0) / 1e6
+          lats = {int(x['percentage']): x['latency']/1e6 for x in d.get('latencyDistribution', [])}
+          p50 = lats.get(50, 0)
+          p99 = lats.get(99, 0)
+          codes = d.get('statusCodeDistribution', {})
+          ok = codes.get('OK', 0)
+          total = sum(codes.values())
+          status = f'{ok}/{total} OK'
+          print(f'| $label | {rps:.0f} | {avg:.2f} ms | {p50:.2f} ms | {p99:.2f} ms | {status} |')
+          ")
+              echo "$row" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| $label | - | - | - | - | not run |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: bench-results/
