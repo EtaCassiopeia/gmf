@@ -1,6 +1,8 @@
 name: Benchmark
 
 on:
+  push:
+    branches: [feat/runtime-agnostic-v2]
   workflow_dispatch:
     inputs:
       concurrency:
@@ -54,8 +56,8 @@ jobs:
 
       - name: Run benchmarks
         run: |
-          CONCURRENCY="${{ inputs.concurrency }}"
-          TOTAL="${{ inputs.total }}"
+          CONCURRENCY="${{ inputs.concurrency || '200' }}"
+          TOTAL="${{ inputs.total || '100000' }}"
           PROTO="examples/proto/helloworld/helloworld.proto"
           IMPORT="examples/proto"
           CALL="helloworld.Greeter.SayHello"
@@ -109,8 +111,8 @@ jobs:
           echo "- **Kernel**: $(uname -r)" >> $GITHUB_STEP_SUMMARY
           echo "- **CPU**: $(grep 'model name' /proc/cpuinfo | head -1 | cut -d: -f2 | xargs)" >> $GITHUB_STEP_SUMMARY
           echo "- **Cores**: $(nproc)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Concurrency**: ${{ inputs.concurrency }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Total requests**: ${{ inputs.total }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Concurrency**: ${{ inputs.concurrency || '200' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total requests**: ${{ inputs.total || '100000' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Framework | RPS | Avg Latency | p50 | p99 | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----------|-----|-------------|-----|-----|--------|" >> $GITHUB_STEP_SUMMARY
